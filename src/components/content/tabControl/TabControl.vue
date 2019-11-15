@@ -33,9 +33,6 @@ export default {
 
 <style lang="less" scoped>
   .tabControl {
-    position: sticky;
-    top: 44px;
-    z-index: 8;
     display: flex;
     background-color: #fff;
     height: 40px;

@@ -1,7 +1,7 @@
 <template>
   <div class="goodsListItem">
     <a :href="item.link">
-      <img class="itemImg" :src="item.show.img" alt="">
+      <img class="itemImg" :src="item.show.img" alt="" @load="imgLoad">
     </a>
     <p class="itemText">{{item.title}}</p>
     <div class="itemInfo">
@@ -25,6 +25,12 @@ export default {
   filters: {
     priceFormat(priceStr) {
       return priceStr.toString().padStart(2, "0");
+    }
+  },
+  methods: {
+    imgLoad() {
+      // 发送事件并在Home.vue中接收
+      this.$bus.$emit('itemImgLoad');
     }
   }
 }

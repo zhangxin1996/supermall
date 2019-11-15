@@ -36,24 +36,33 @@ export default {
     })
 
     // 2、获取滚动实时位置
-    this.scroll.on('scroll', (pos) => {
-      // console.log(pos);
-      this.$emit('getPosition', pos);
-    })
-
-    // 3、上拉加载更多
-    this.scroll.on('pullingUp', () => {
-      // console.log("上拉加载更多");
-      this.$emit('getMore');
-    })
+    if(this.probeType === 2 || this.probeType === 3) {
+      this.scroll.on('scroll', (pos) => {
+        this.$emit('getPosition', pos);
+      })
+    }
+    
+    // 3、监听scroll滚到底部，下拉刷新
+    if(this.pullUpLoad) {
+      this.scroll.on('pullingUp', () => {
+        this.$emit('pullUpLoad');
+      })
+    }
   },
   methods: {
-    backToTop(x, y, time) {
-      this.scroll.scrollTo(x, y, time);
+    // 返回顶部的方法
+    scrollTo(x, y, time) {
+      this.scroll && this.scroll.scrollTo(x, y, time);
     },
-    // 标识一次上拉加载动作结束
+    // 从新计算better-scroll，当DOM结构发生变化的时候重新调用
+    refresh() {
+      this.scroll && this.scroll.refresh();
+    },
     finishPullUp() {
-      this.scroll.finishPullUp();
+      this.scroll && this.scroll.finishPullUp();
+    },
+    getScrollY() {
+      return this.scroll ? this.scroll.y : 0;
     }
   }
 }

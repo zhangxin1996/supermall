@@ -3,17 +3,25 @@
     <nav-bar class="home-nav">
       <div slot="center" class="home-title">购物街</div>
     </nav-bar>
-    <scroll 
-      class="content" 
-      ref="scroll" 
-      :probeType="3" 
-      @getPosition="getPos" 
-      :pullUpLoad="true" 
-      @getMore="getMore">
-      <home-swiper :banners="banners" />
+    <!-- 克隆的TabControl -->
+    <tab-control ref="tabControlClone" 
+                 class="tabControlClone"
+                 :tabTitle="['流行', '新款', '精选']" 
+                 @tabIndex="tabI"
+                 v-show="istabFixed" />
+
+    <scroll class="content" 
+            ref="scroll" 
+            :probeType="3" 
+            @getPosition="getPos"
+            :pullUpLoad="true"
+            @pullUpLoad="loadMore">
+      <home-swiper :banners="banners" @swiperImgLoad="swiperImgLoad" />
       <home-recommend-view :recommends="recommends" />
       <home-feature-view />
-      <tab-control :tabTitle="['流行', '新款', '精选']" @tabIndex="tabI" />
+      <tab-control ref="tabControl" 
+                   :tabTitle="['流行', '新款', '精选']" 
+                   @tabIndex="tabI" />
       <goods-list :goodsItem="goods[tabCurrentType].info" />
     </scroll>
     <back-to-top @click.native="backTo" v-show="isShowBackToIcon" />
@@ -32,6 +40,8 @@ import Scroll from 'components/common/scroll/Scroll'
 import BackToTop from 'components/content/backToTop/BackToTop'
 
 import {homeMultiData, goodsInfo} from 'network/home.js'
+
+import {debounce} from 'common/utils.js'
 
 export default {
   name: 'Home',
@@ -55,17 +65,37 @@ export default {
         'sell': {page: 0, info: []}
       },
       tabCurrentType: 'pop',
-      isShowBackToIcon: false
+      isShowBackToIcon: false,
+      tabOffsetTop: 0,
+      istabFixed: false,
+      saveY: 0
     }
   },
   created() {
-    // 请求多个数据
+    // 1、请求多个数据
     this.homeMultiData();
 
-    // 请求商品数据
+    // 2、请求商品数据
     this.goodsInfo('pop');
     this.goodsInfo('new');
     this.goodsInfo('sell');
+  },
+  mounted() {
+    // 1、图片加载完成
+    const refresh = debounce(this.$refs.scroll.refresh, 50);
+    this.$bus.$on('itemImgLoad', () => {
+      refresh();
+    })
+  },
+  activated() {
+    // 当进入的时候，回到之前的y坐标
+    this.$refs.scroll.scrollTo(0, this.saveY, 0);
+    this.$refs.scroll.refresh();
+  },
+  deactivated() {
+    // 当离开的时候，记录当前的y坐标
+    this.saveY = this.$refs.scroll.getScrollY();
+    console.log(this.saveY);
   },
   methods: {
     // 进行事件相关的方法
@@ -81,18 +111,27 @@ export default {
           this.tabCurrentType = "sell";
           break;
       }
+      this.$refs.tabControlClone.currentIndex = index;
+      this.$refs.tabControl.currentIndex = index;
       // console.log(this.tabCurrentType);
     },
     backTo() {
-      this.$refs.scroll.backToTop(0, 0, 500);
+      this.$refs.scroll.scrollTo(0, 0, 500);
     },
     getPos(pos) {
-      const posY = Math.abs(Math.floor(pos.y));
-      this.isShowBackToIcon = posY > 1000;
+      // 1、BackTop的显隐
+      this.isShowBackToIcon = -(pos.y) > 1000;
+
+      // 2、tabControlClone和tabControl的显隐
+      this.istabFixed = -(pos.y) > this.tabOffsetTop;
+
     },
-    getMore() {
-      // console.log("加载更多");
+    loadMore() {
       this.goodsInfo(this.tabCurrentType);
+    },
+    swiperImgLoad() {
+      // 所有的组件都有一个属性叫$el，用于获取组件中的元素的
+      this.tabOffsetTop = this.$refs.tabControl.$el.offsetTop;
     },
 
     // 进行网络封装的方法
@@ -110,6 +149,7 @@ export default {
         this.goods[type].info.push(...res.data.list);
         this.goods[type].page += 1;
 
+        // 每次触发上拉事件后，在回调函数的最后，都应该调用 finishPullUp() 方法
         this.$refs.scroll.finishPullUp();
       })
     }
@@ -120,13 +160,9 @@ export default {
 <style lang="less" scoped>
   #home {
     height: 100vh;
-    padding: 44px 0 49px;
 
     .home-nav {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
+      position: relative;
       z-index: 9;
       background: var(--color-tint);
 
@@ -136,8 +172,16 @@ export default {
       }
     }
 
+    .tabControlClone {
+      position: relative;
+      z-index: 9;
+      left: 0;
+      right: 0;
+    }
+
     .content {
       overflow: hidden;
+      background: #fff;
       position: fixed;
       top: 44px;
       bottom: 49px;
@@ -145,4 +189,6 @@ export default {
       right: 0;
     }
   }
+
+  
 </style>
